@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PrintLens – Forensic Fingerprint Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef0ec;--card:#fff;--ink:#14212b;--mut:#5b6872;--line:#d3d9d6;--acc:#0e6e73;--red:#b3362b;--ok:#1f7a45;--warn:#b7791f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a21;--card:#17242d;--ink:#e6edf0;--mut:#93a3ad;--line:#2b3c47;--acc:#4fc3c8;--red:#ff7a6b;--ok:#52d28a;--warn:#f0b955;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#101a21;--card:#17242d;--ink:#e6edf0;--mut:#93a3ad;--line:#2b3c47;--acc:#4fc3c8;--red:#ff7a6b;--ok:#52d28a;--warn:#f0b955;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 "Schibsted Grotesk",system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0 22px;border-bottom:2px solid var(--ink)}
+h1{font-size:clamp(26px,5vw,40px);font-weight:800;margin:0;letter-spacing:-.02em}
+h1 small{display:block;font-size:14px;font-weight:400;color:var(--mut);letter-spacing:0;margin-top:4px}
+h2{font-size:19px;margin:30px 0 4px}
+p.sub{color:var(--mut);margin:0 0 14px;max-width:70ch}
+.grid{display:grid;gap:12px}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:820px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.g4{grid-template-columns:1fr}}
+.slot{background:var(--card);border:1.5px dashed var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px;cursor:pointer;min-height:190px}
+.slot:hover,.slot:focus-within{border-color:var(--acc)}
+.slot.full{border-style:solid}
+.slot canvas,.thumb{width:100%;aspect-ratio:1;background:repeating-linear-gradient(45deg,transparent 0 6px,var(--line) 6px 7px);border-radius:3px;object-fit:contain}
+.slot input[type=text]{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:2px 0}
+.slot .hint{font-size:12px;color:var(--mut)}
+.slot select,.opt select{font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px 6px;max-width:100%}
+.opt{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:16px;font-size:14px}.opt label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.q{border-color:var(--red)}
+.q .lbl{color:var(--red);font-weight:800}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+button{font:inherit;font-weight:600;border-radius:5px;padding:10px 18px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
+button.pri{background:var(--ink);color:var(--bg)}button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+#status{color:var(--mut);font-size:14px}
+.verdict{border-left:8px solid var(--acc);background:var(--card);padding:16px 18px;border-radius:0 6px 6px 0;margin:18px 0}
+.verdict.ok{border-color:var(--ok)}.verdict.mid{border-color:var(--warn)}.verdict.no{border-color:var(--red)}
+.verdict h3{margin:0 0 4px;font-size:22px}
+.res{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;grid-template-columns:150px 1fr;gap:14px;margin-bottom:12px}
+@media(max-width:560px){.res{grid-template-columns:1fr}}
+.res.top{border:2px solid var(--ok)}
+.res canvas{width:100%;border-radius:3px;background:#fff}
+.rk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rk b{font-size:18px}.pct{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+.meter{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0 10px}
+.meter i{display:block;height:100%;background:var(--acc)}
+.res.top .meter i{background:var(--ok)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{padding:4px 8px 4px 0;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:400;width:46%}
+.scroll{overflow-x:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin:8px 0}
+.legend span:before{content:"";display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px;border:2px solid}
+.l1:before{border-color:#e5392b;border-radius:50%}.l2:before{border-color:#2b7be5}.l3:before{border-color:#1fbf6a;border-radius:50%;background:#1fbf6a55}.l4:before{border-color:#f0b400}.l5:before{border-color:#8a3ffc}
+.qview{max-width:340px}.qview canvas{width:100%;border-radius:4px;border:1px solid var(--line);background:#fff}
+.note{font-size:13px;color:var(--mut);border-top:1px solid var(--line);margin-top:28px;padding-top:12px}
+#out{display:none}
+.how ol{list-style:none;display:grid;grid-template-columns:repeat(5,1fr);margin:20px 0 0;padding:0}
+.how li{padding:12px 14px;border:1px solid var(--line);border-left:0;background:var(--card);font-size:13px;color:var(--mut)}
+.how li:first-child{border-left:1px solid var(--line);border-radius:6px 0 0 6px}.how li:last-child{border-radius:0 6px 6px 0}
+.how li b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+@media(max-width:720px){.how ol{grid-template-columns:1fr}.how li{border-left:1px solid var(--line);border-radius:0!important}}
+.case{display:flex;gap:14px;flex-wrap:wrap;margin-top:20px}.case label{display:flex;flex-direction:column;font-size:13px;color:var(--mut);gap:3px;flex:1;min-width:180px}
+.case input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--ink)}
+.h3{font-size:16px;margin:26px 0 8px}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:720px){.stages{grid-template-columns:repeat(2,1fr)}}
+.stages figure{margin:0}.stages canvas{width:100%;border:1px solid var(--line);border-radius:4px;background:#fff}.stages figcaption{font-size:12px;color:var(--mut);margin-top:4px}
+.pc{width:100%;border:1px solid var(--line);border-radius:4px;background:#fff}
+.sum{display:grid;gap:6px}.srow{display:grid;grid-template-columns:110px 1fr 62px;gap:10px;align-items:center;font-size:14px}
+.srow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.strack{position:relative;height:14px;background:var(--line);border-radius:3px;overflow:hidden}.strack i{display:block;height:100%;background:var(--acc)}
+.srow:first-child .strack i{background:var(--ok)}.strack u{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);opacity:.55}
+.srow b{text-align:right;font-variant-numeric:tabular-nums}.sumn{font-size:12px;color:var(--mut);margin-top:4px}
+.casebar{font-size:13px;color:var(--mut);margin-bottom:6px}
+.res button{margin-top:10px;padding:6px 12px;font-size:13px}
+header .acts{display:flex;gap:10px;flex-wrap:wrap}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:3px;padding:1px 6px;margin-left:8px;color:var(--mut);font-weight:400;vertical-align:2px}
+@media print{header button,.bar,.slot .hint,#inputs{display:none}body{background:#fff;color:#000}}
+</style></head><body><div class="wrap">
+<header>
+<h1>PrintLens<small>Forensic fingerprint comparison: 1 questioned print against 8 specimens</small></h1>
+<div class="acts"><button id="demo" class="pri">Load demo case</button><button id="theme" aria-label="Toggle theme">Light / Dark</button></div>
+</header>
+<section class="how" aria-label="Method"><ol>
+<li><b>Input</b>Latent, patent or plastic print</li>
+<li><b>Pre-processing</b>Normalise, binarise, thin ridges, reconstruct</li>
+<li><b>Feature extraction</b>Minutiae, core, delta, pattern type</li>
+<li><b>Matching</b>Align and pair against 8 specimens</li>
+<li><b>Decision</b>Similarity % and verdict</li></ol></section>
+<div class="case"><label>Case number<input id="caseNo" type="text" maxlength="40" placeholder="e.g. FP-2026-014"></label><label>Examiner<input id="examiner" type="text" maxlength="40" placeholder="Name"></label></div>
+
+<div id="inputs">
+<h2>1. Questioned (forged) sample</h2>
+<p class="sub">Upload one image of the disputed print. Dark ridges on a light background give the best result.</p>
+<div class="grid g4"><div class="slot q full" id="qslot"></div></div>
+
+<h2>2. Specimen samples (up to 8)</h2>
+<p class="sub">Click a slot to add one specimen, or add several at once with the button below. Names are editable.</p>
+<div class="grid g4" id="slots"></div>
+<div class="opt"><label>Reconstruction <select id="recon"><option value="auto">Auto (partial / poor prints)</option><option value="on">On for all prints</option><option value="off">Off</option></select></label><label>Analysis profile <select id="prof"><option value="bal">Balanced (recommended)</option><option value="sens">Sensitive (latent / partial)</option><option value="strict">Strict (high certainty)</option></select></label><label>View <select id="view"><option value="orig">Original + minutiae</option><option value="ridge">Enhanced ridge map</option></select></label></div>
+<div class="bar">
+<button id="multi">Add multiple specimens</button>
+<button class="pri" id="go" disabled>Compare prints</button>
+<button id="clear">Reset</button>
+<span id="status"></span>
+</div>
+</div>
+<input type="file" id="fq" accept="image/*" hidden>
+<input type="file" id="fm" accept="image/*" multiple hidden>
+<input type="file" id="fs" accept="image/*" hidden>
+
+<div id="out">
+<h2>Result</h2>
+<div id="casebar" class="casebar"></div>
+<div id="verdict"></div>
+<div id="summary"></div>
+<h3 class="h3">Processing pipeline: questioned print</h3>
+<div id="stages" class="stages"></div>
+<div id="qinfo" class="scroll" style="margin-top:10px;max-width:520px"></div>
+<div class="legend"><span class="l1">Ridge ending</span><span class="l2">Bifurcation</span><span class="l3">Matched minutia</span><span class="l4">Core / Delta</span><span class="l5">Reconstructed ridges (not used as evidence)</span></div>
+<h3 class="h3" id="pairBox"><span id="pairT">Matched minutiae</span></h3>
+<canvas id="pc" class="pc"></canvas>
+<h3 class="h3">Ranking of all specimens</h3>
+<div id="results"></div>
+<div class="bar"><button onclick="window.print()">Print / save report</button></div>
+</div>
+
+<p class="note">Method: ridge normalisation, adaptive binarisation, Zhang-Suen thinning, crossing-number minutiae extraction (ridge endings and bifurcations), orientation-field singularity detection (core, delta) for Loop / Whorl / Arch pattern, and rotation- and translation-tolerant minutiae pairing. Score = 75% minutiae agreement + 12% pattern type + 8% ridge density + 5% core/delta count. Sample types (patent, plastic, latent) use different background normalisation and contrast thresholds. Reconstruction smooths the orientation field, extends it two blocks beyond the print edge, estimates ridge frequency and applies a Gabor filter to join broken ridges; reconstructed (purple) areas are never counted as evidence. This is a screening aid: the final opinion must come from a qualified fingerprint examiner.</p>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const root=document.documentElement;
+$('#theme').onclick=()=>{const d=matchMedia('(prefers-color-scheme: dark)').matches;const cur=root.dataset.theme||(d?'dark':'light');root.dataset.theme=cur==='dark'?'light':'dark'};
+
+/* ---------- state & upload UI ---------- */
+const TS=i=>'<select aria-label="Sample type"><option value="auto">Type: Auto-detect</option><option value="patent">Patent (visible, ink / blood)</option><option value="plastic">Plastic (3D impression)</option><option value="latent">Latent (developed / faint)</option></select>';
+const DR=[];let LAST=null;
+const PROF={bal:{d:12,a:.4,s:.55,hi:65,lo:45,gap:8},sens:{d:14,a:.5,s:.5,hi:60,lo:40,gap:6},strict:{d:10,a:.3,s:.65,hi:75,lo:55,gap:12}};let CFG=PROF.bal;
+const state={q:null,s:Array(8).fill(null),types:Array(9).fill('auto'),names:Array.from({length:8},(_,i)=>'Specimen '+String.fromCharCode(65+i))};
+let target=null;
+const loadImg=f=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f)});
+function thumb(c,img){c.width=200;c.height=200;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,200,200);const k=Math.min(200/img.width,200/img.height);x.drawImage(img,(200-img.width*k)/2,(200-img.height*k)/2,img.width*k,img.height*k)}
+function renderQ(){const el=$('#qslot');el.innerHTML='<span class="lbl">Questioned sample</span>'+(state.q?'<canvas></canvas>':'<div class="thumb"></div>')+TS(0)+'<span class="hint">'+(state.q?'Click to replace':'Click to upload')+'</span>';if(state.q)thumb(el.querySelector('canvas'),state.q);const sl0=el.querySelector('select');sl0.value=state.types[0];sl0.onclick=e=>e.stopPropagation();sl0.onchange=()=>state.types[0]=sl0.value;el.tabIndex=0;el.onclick=()=>$('#fq').click();el.onkeydown=e=>{if(e.key==='Enter')$('#fq').click()};ready()}
+function renderSlots(){const box=$('#slots');box.innerHTML='';state.s.forEach((img,i)=>{const d=document.createElement('div');d.className='slot'+(img?' full':'');d.innerHTML=(img?'<canvas></canvas>':'<div class="thumb"></div>')+'<input type="text" aria-label="Specimen name" maxlength="28">'+TS(i+1)+'<span class="hint">'+(img?'Click image to replace':'Click to upload')+'</span>';const inp=d.querySelector('input');inp.value=state.names[i];inp.oninput=()=>state.names[i]=inp.value;inp.onclick=e=>e.stopPropagation();const sl=d.querySelector('select');sl.value=state.types[i+1];sl.onclick=e=>e.stopPropagation();sl.onchange=()=>state.types[i+1]=sl.value;if(img)thumb(d.querySelector('canvas'),img);d.onclick=()=>{target=i;$('#fs').click()};box.appendChild(d)});ready()}
+function ready(){const n=state.s.filter(Boolean).length;$('#go').disabled=!(state.q&&n>=1);$('#status').textContent=(state.q?'Questioned: ready':'Questioned: missing')+' | Specimens: '+n+'/8'}
+$('#fq').onchange=async e=>{if(e.target.files[0]){state.q=await loadImg(e.target.files[0]);renderQ()}e.target.value=''};
+$('#fs').onchange=async e=>{if(e.target.files[0]){state.s[target]=await loadImg(e.target.files[0]);renderSlots()}e.target.value=''};
+$('#multi').onclick=()=>$('#fm').click();
+$('#fm').onchange=async e=>{const fl=[...e.target.files];for(const f of fl){let i=state.s.findIndex(x=>!x);if(i<0)break;state.s[i]=await loadImg(f);const nm=f.name.replace(/\.[^.]+$/,'').slice(0,28);if(nm)state.names[i]=nm}renderSlots();e.target.value=''};
+$('#clear').onclick=()=>{state.q=null;state.s.fill(null);state.types.fill('auto');state.names=state.names.map((_,i)=>'Specimen '+String.fromCharCode(65+i));renderQ();renderSlots();$('#out').style.display='none'};
+
+/* ---------- image processing ---------- */
+function box(a,w,h,r){const I=new Float64Array((w+1)*(h+1));for(let y=0;y<h;y++){let s=0;for(let x=0;x<w;x++){s+=a[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+s}}
+const o=new Float32Array(w*h);for(let y=0;y<h;y++){const y0=Math.max(0,y-r),y1=Math.min(h,y+r+1);for(let x=0;x<w;x++){const x0=Math.max(0,x-r),x1=Math.min(w,x+r+1);o[y*w+x]=(I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0])/((x1-x0)*(y1-y0))}}return o}
+function thin(b,w,h){let ch=true;const rm=[];while(ch){ch=false;for(let s=0;s<2;s++){rm.length=0;for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(!b[i])continue;const p2=b[i-w],p3=b[i-w+1],p4=b[i+1],p5=b[i+w+1],p6=b[i+w],p7=b[i+w-1],p8=b[i-1],p9=b[i-w-1];const B=p2+p3+p4+p5+p6+p7+p8+p9;if(B<2||B>6)continue;const A=(!p2&&p3?1:0)+(!p3&&p4?1:0)+(!p4&&p5?1:0)+(!p5&&p6?1:0)+(!p6&&p7?1:0)+(!p7&&p8?1:0)+(!p8&&p9?1:0)+(!p9&&p2?1:0);if(A!==1)continue;if(s===0){if(p2&&p4&&p6)continue;if(p4&&p6&&p8)continue}else{if(p2&&p4&&p8)continue;if(p2&&p6&&p8)continue}rm.push(i)}for(const i of rm)b[i]=0;if(rm.length)ch=true}}}
+const BS=10;
+function analyzeSmart(img,ft,mode){let A=analyze(img,ft,false);if(mode==='on'||(mode==='auto'&&(A.mn.length<25||A.cover<.4)))A=analyze(img,ft,true);return A}
+function estPeriod(img,pm){const w=Math.round(img.width*pm),h=Math.round(img.height*pm),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=.299*d[4*i]+.587*d[4*i+1]+.114*d[4*i+2];
+const B=48,cand=[];for(let by=0;by+B<=h;by+=24)for(let bx=0;bx+B<=w;bx+=24){let s=0,s2=0;for(let y=0;y<B;y+=2)for(let X=0;X<B;X+=2){const v=g[(by+y)*w+bx+X];s+=v;s2+=v*v}const m=s/(B*B/4);cand.push([s2/(B*B/4)-m*m,bx,by])}
+cand.sort((a,b)=>b[0]-a[0]);const out=[];
+for(const[,bx,by]of cand.slice(0,14)){let gxx=0,gyy=0,gxy=0;for(let y=1;y<B-1;y++)for(let X=1;X<B-1;X++){const i=(by+y)*w+bx+X,gx=g[i+1]-g[i-1],gy=g[i+w]-g[i-w];gxx+=gx*gx;gyy+=gy*gy;gxy+=gx*gy}
+const t=.5*Math.atan2(2*gxy,gxx-gyy),nx=Math.cos(t),ny=Math.sin(t),cx=bx+B/2,cy=by+B/2,prof=[];
+for(let u=-34;u<=34;u++){let s=0,k=0;for(let v=-12;v<=12;v+=2){const px=Math.round(cx+nx*u-ny*v),py=Math.round(cy+ny*u+nx*v);if(px>=0&&py>=0&&px<w&&py<h){s+=g[py*w+px];k++}}prof.push(k?s/k:0)}
+const mu=prof.reduce((a,b)=>a+b,0)/prof.length,p=prof.map(v=>v-mu),ac=l=>{let s=0;for(let i=0;i+l<p.length;i++)s+=p[i]*p[i+l];return s/(p.length-l)},a0=ac(0)||1;let prev=ac(3),bl=0;
+for(let l=4;l<=34;l++){const a=ac(l);if(a>prev&&a>=ac(l+1)&&a/a0>.25){bl=l;break}prev=a}if(bl){const a1=ac(bl-1),a2=ac(bl),a3=ac(bl+1),den=a1-2*a2+a3;out.push(bl+(den?Math.max(-.5,Math.min(.5,.5*(a1-a3)/den)):0))}}
+if(out.length<3)return 0;out.sort((a,b)=>a-b);return out[out.length>>1]}
+function analyze(img,ftype,recon){
+const mxd=Math.max(img.width,img.height),pm=Math.min(2.5,700/mxd),P0=estPeriod(img,pm);
+let sc=P0?11.5*pm/P0:300/mxd;sc=Math.min(sc,480/mxd,3);sc=Math.max(sc,Math.min(1,150/mxd));
+const w=Math.round(img.width*sc),h=Math.round(img.height*sc),n=w*h;
+const cv=document.createElement('canvas');cv.width=w;cv.height=h;const cx=cv.getContext('2d',{willReadFrequently:true});cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(img,0,0,w,h);
+const d=cx.getImageData(0,0,w,h).data;let g=new Float32Array(n),sum=0;
+for(let i=0;i<n;i++){g[i]=.299*d[4*i]+.587*d[4*i+1]+.114*d[4*i+2];sum+=g[i]}
+if(sum/n<110)for(let i=0;i<n;i++)g[i]=255-g[i];
+let gs=0,gs2=0;for(let i=0;i<n;i++){gs+=g[i];gs2+=g[i]*g[i]}const gsd=Math.sqrt(Math.max(0,gs2/n-(gs/n)**2));
+let ft=ftype;if(ft==='auto')ft=gsd>55?'patent':'latent';
+if(ft!=='patent'){const bg=box(g,w,h,14),gain=ft==='latent'?2.6:2;for(let i=0;i<n;i++)g[i]=Math.max(0,Math.min(255,128+(g[i]-bg[i])*gain))}
+g=box(g,w,h,ft==='latent'?2:1);const m=box(g,w,h,ft==='plastic'?9:7);
+let bin=new Uint8Array(n);for(let i=0;i<n;i++)bin[i]=g[i]<m[i]-3?1:0;
+/* block mask by contrast */
+const bw=Math.floor(w/BS),bh=Math.floor(h/BS),bm=new Uint8Array(bw*bh);
+for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){let s=0,s2=0;for(let y=0;y<BS;y++)for(let x=0;x<BS;x++){const v=g[(by*BS+y)*w+bx*BS+x];s+=v;s2+=v*v}const mu=s/(BS*BS);bm[by*bw+bx]=Math.sqrt(Math.max(0,s2/(BS*BS)-mu*mu))>(ft==='patent'?14:ft==='plastic'?12:10)?1:0}
+/* majority clean, then mask */
+const b2=new Uint8Array(n);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;const c=bin[i-w-1]+bin[i-w]+bin[i-w+1]+bin[i-1]+bin[i]+bin[i+1]+bin[i+w-1]+bin[i+w]+bin[i+w+1];b2[i]=c>=5?1:0}
+let area=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const bx=Math.floor(x/BS),by=Math.floor(y/BS);if(bx<bw&&by<bh&&bm[by*bw+bx])area++;else b2[y*w+x]=0}
+const bsnap=b2.slice();thin(b2,w,h);
+/* orientation field */
+const gx=new Float32Array(n),gy=new Float32Array(n);
+for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;gx[i]=(g[i-w+1]+2*g[i+1]+g[i+w+1])-(g[i-w-1]+2*g[i-1]+g[i+w-1]);gy[i]=(g[i+w-1]+2*g[i+w]+g[i+w+1])-(g[i-w-1]+2*g[i-w]+g[i-w+1])}
+const vx=new Float32Array(bw*bh),vy=new Float32Array(bw*bh);
+for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){let a=0,b=0;for(let y=0;y<BS;y++)for(let x=0;x<BS;x++){const i=(by*BS+y)*w+bx*BS+x;a+=gx[i]*gx[i]-gy[i]*gy[i];b+=2*gx[i]*gy[i]}vx[by*bw+bx]=a;vy[by*bw+bx]=b}
+const ori=new Float32Array(bw*bh);
+for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){let a=0,b=0;for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const X=bx+k,Y=by+j;if(X<0||Y<0||X>=bw||Y>=bh)continue;a+=vx[Y*bw+X];b+=vy[Y*bw+X]}ori[by*bw+bx]=.5*Math.atan2(b,a)+Math.PI/2}
+let fm=bm.slice();
+if(recon){
+for(let it=0;it<2;it++){const o2=ori.slice();for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){if(!bm[by*bw+bx])continue;let a=0,b=0;for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const X=bx+k,Y=by+j;if(X<0||Y<0||X>=bw||Y>=bh||!bm[Y*bw+X])continue;a+=Math.cos(2*ori[Y*bw+X]);b+=Math.sin(2*ori[Y*bw+X])}o2[by*bw+bx]=.5*Math.atan2(b,a)}ori.set(o2)}
+for(let r=0;r<2;r++){const nf=fm.slice(),no=ori.slice();for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){if(fm[by*bw+bx])continue;let a=0,b=0,c=0;for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const X=bx+k,Y=by+j;if(X<0||Y<0||X>=bw||Y>=bh||!fm[Y*bw+X])continue;a+=Math.cos(2*ori[Y*bw+X]);b+=Math.sin(2*ori[Y*bw+X]);c++}if(c>=2){nf[by*bw+bx]=1;no[by*bw+bx]=.5*Math.atan2(b,a)}}fm=nf;ori.set(no)}
+let bP=9,bE=-1;for(let P=5;P<=14;P++){let E=0,cnt=0;for(let by=2;by<bh-2;by+=2)for(let bx=2;bx<bw-2;bx+=2){if(!bm[by*bw+bx])continue;const t=ori[by*bw+bx],x0=bx*BS+5,y0=by*BS+5;let s=0;for(let u=-2*P;u<=2*P;u++){const x=Math.round(x0-Math.sin(t)*u),y=Math.round(y0+Math.cos(t)*u);if(x<0||y<0||x>=w||y>=h)continue;s+=(g[y*w+x]-m[y*w+x])*Math.cos(2*Math.PI*u/P)}E+=Math.abs(s)/(4*P+1);cnt++}if(cnt&&E/cnt>bE){bE=E/cnt;bP=P}}
+const sa=bP*.55,sb=bP*.35,Rr=Math.round(bP*.9)+1,nb2=new Uint8Array(n);
+for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){if(!fm[by*bw+bx])continue;const t=ori[by*bw+bx],c=Math.cos(t),s=Math.sin(t),K=[];for(let dy=-Rr;dy<=Rr;dy++)for(let dx=-Rr;dx<=Rr;dx++){const xa=dx*c+dy*s,ya=-dx*s+dy*c;K.push(dx,dy,Math.exp(-(xa*xa/(2*sa*sa)+ya*ya/(2*sb*sb)))*Math.cos(2*Math.PI*ya/bP))}
+for(let y=by*BS;y<by*BS+BS;y++)for(let x=bx*BS;x<bx*BS+BS;x++){let acc=0;for(let k=0;k<K.length;k+=3){const X=x+K[k],Y=y+K[k+1];if(X>=0&&Y>=0&&X<w&&Y<h)acc+=K[k+2]*(g[Y*w+X]-m[Y*w+X])}nb2[y*w+x]=acc<0?1:0}}
+bsnap.set(nb2);thin(nb2,w,h);b2.set(nb2)}
+const inner=(bx,by)=>{for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const X=bx+k,Y=by+j;if(X<0||Y<0||X>=bw||Y>=bh||!bm[Y*bw+X])return false}return true};
+/* singularities (Poincare index on radius-2 ring) */
+const ring=[];for(let k=-2;k<=2;k++)ring.push([k,-2]);for(let k=-1;k<=2;k++)ring.push([2,k]);for(let k=1;k>=-2;k--)ring.push([k,2]);for(let k=1;k>=-1;k--)ring.push([-2,k]);
+let cores=[],deltas=[];
+for(let by=2;by<bh-2;by++)for(let bx=2;bx<bw-2;bx++){if(!bm[by*bw+bx])continue;let ok=true,s=0;for(let k=0;k<ring.length;k++){const[a,b]=ring[k],[c,e]=ring[(k+1)%ring.length];const X1=bx+a,Y1=by+b,X2=bx+c,Y2=by+e;if(!bm[Y1*bw+X1]||!bm[Y2*bw+X2]){ok=false;break}let dd=ori[Y2*bw+X2]-ori[Y1*bw+X1];while(dd>Math.PI/2)dd-=Math.PI;while(dd<=-Math.PI/2)dd+=Math.PI;s+=dd}if(!ok)continue;const idx=s/(2*Math.PI);if(idx>.38)cores.push([bx,by]);else if(idx<-.38)deltas.push([bx,by])}
+const cluster=a=>{const o=[];for(const p of a){const f=o.find(q=>Math.hypot(q.x-p[0],q.y-p[1])<5);if(f){f.x=(f.x*f.n+p[0])/(f.n+1);f.y=(f.y*f.n+p[1])/(f.n+1);f.n++}else o.push({x:p[0],y:p[1],n:1})}return o.map(q=>({x:(q.x+.5)*BS,y:(q.y+.5)*BS}))};
+cores=cluster(cores);deltas=cluster(deltas);
+/* minutiae */
+let mn=[];const off=[-w,-w+1,1,w+1,w,w-1,-1,-w-1];
+for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){const i=y*w+x;if(!b2[i])continue;const bx=Math.floor(x/BS),by=Math.floor(y/BS);if(bx>=bw||by>=bh||!inner(bx,by))continue;let cn=0;for(let k=0;k<8;k++)cn+=Math.abs(b2[i+off[k]]-b2[i+off[(k+1)%8]]);cn/=2;if(cn===1||cn===3)mn.push({x,y,t:cn===1?0:1,a:ori[by*bw+bx]})}
+const keep=mn.map(()=>true);for(let i=0;i<mn.length;i++)for(let j=i+1;j<mn.length;j++)if(Math.hypot(mn[i].x-mn[j].x,mn[i].y-mn[j].y)<8){keep[i]=keep[j]=false}
+mn=mn.filter((_,i)=>keep[i]);
+let mx=0,my=0;for(let y=0;y<bh;y++)for(let x=0;x<bw;x++)if(bm[y*bw+x]){mx+=x;my+=y}const nb=bm.reduce((a,b)=>a+b,0)||1;mx=mx/nb*BS;my=my/nb*BS;
+mn.sort((a,b)=>Math.hypot(a.x-mx,a.y-my)-Math.hypot(b.x-mx,b.y-my));mn=mn.slice(0,70);
+let sk=0;for(let i=0;i<n;i++)sk+=b2[i];
+const ncore=cores.length,ndel=deltas.length;
+const type=(ncore===0&&ndel===0)?'Arch / Partial':(ncore>=2||(ncore>=1&&ndel>=2))?'Whorl':'Loop';
+return{cv,w,h,bin:bsnap,sk:b2,bm,fm,bw,bh,used:ft,period:P0,recon:!!recon,cover:area/n,mn,cores,deltas,type,dens:sk/Math.max(1,area),ends:mn.filter(p=>p.t===0).length,bifs:mn.filter(p=>p.t===1).length};
+}
+
+/* ---------- matching ---------- */
+const adiff=(a,b)=>{let d=((a-b)%Math.PI+Math.PI)%Math.PI;return Math.min(d,Math.PI-d)};
+function pair(Q,S,rot,tx,ty,k){k=k||1;const c=Math.cos(rot),s=Math.sin(rot),used=new Uint8Array(S.length),pairs=[];
+for(let i=0;i<Q.length;i++){const p=Q[i],x=k*(c*p.x-s*p.y)+tx,y=k*(s*p.x+c*p.y)+ty,a=p.a+rot;let best=-1,bd=CFG.d;for(let j=0;j<S.length;j++){if(used[j]||S[j].t!==p.t)continue;const dd=Math.hypot(S[j].x-x,S[j].y-y);if(dd<bd&&adiff(S[j].a,a)<CFG.a){bd=dd;best=j}}if(best>=0){used[best]=1;pairs.push([i,best])}}return pairs}
+function match(A,B){const Q=A.mn,S=B.mn;let best=[],bT=null;
+for(const k of[1,.91,1.1]){if(k!==1&&best.length>=.8*Math.min(Q.length,S.length))break;for(const p of Q)for(const q of S){if(p.t!==q.t)continue;const da=((q.a-p.a)%Math.PI+Math.PI)%Math.PI;for(const rot of[da,da-Math.PI]){if(Math.abs(rot)>1.9)continue;const c=Math.cos(rot),s=Math.sin(rot),tx=q.x-k*(c*p.x-s*p.y),ty=q.y-k*(s*p.x+c*p.y);const pr=pair(Q,S,rot,tx,ty,k);if(pr.length>best.length){best=pr;bT=[rot,tx,ty,k]}}}}
+const m=best.length;let nQi=m,nSi=m;
+if(bT){const[r,tx,ty,k]=bT,c=Math.cos(r),s=Math.sin(r),ins=(Z,x,y)=>{const bx=Math.floor(x/BS),by=Math.floor(y/BS);return bx>=0&&by>=0&&bx<Z.bw&&by<Z.bh&&Z.bm[by*Z.bw+bx]};
+nQi=Math.max(m,Q.filter(p=>ins(B,k*(c*p.x-s*p.y)+tx,k*(s*p.x+c*p.y)+ty)).length);nSi=Math.max(m,S.filter(q=>ins(A,(c*(q.x-tx)+s*(q.y-ty))/k,(-s*(q.x-tx)+c*(q.y-ty))/k)).length)}
+const minu=Math.min(100,100*m*m/(nQi*nSi)/CFG.s)*Math.min(1,Math.max(0,(m-4)/10));
+const pat=(A.type===B.type)?100:(A.type.startsWith('Arch')||B.type.startsWith('Arch'))?45:0;
+const den=100*Math.max(0,1-Math.abs(A.dens-B.dens)/Math.max(A.dens,B.dens,.01)*2);
+const sing=100*Math.max(0,1-(Math.abs(A.cores.length-B.cores.length)+Math.abs(A.deltas.length-B.deltas.length))/3);
+return{m,nQi,nSi,pairs:best,score:.75*minu+.12*pat+.08*den+.05*sing,minu,pat,den}}
+
+/* ---------- drawing ---------- */
+function draw(canvas,A,matched,mode){mode=mode||$('#view').value;canvas.width=A.w;canvas.height=A.h;const x=canvas.getContext('2d');
+if(mode==='bin'){x.fillStyle='#fff';x.fillRect(0,0,A.w,A.h);x.fillStyle='#14212b';for(let i=0;i<A.bin.length;i++)if(A.bin[i])x.fillRect(i%A.w,(i/A.w)|0,1,1);return}
+if(mode==='ridge'||mode==='skel'){x.fillStyle='#fff';x.fillRect(0,0,A.w,A.h);for(let i=0;i<A.sk.length;i++)if(A.sk[i]){const px=i%A.w,py=(i/A.w)|0;x.fillStyle=A.bm[Math.floor(py/BS)*A.bw+Math.floor(px/BS)]?'#14212b':'#8a3ffc';x.fillRect(px,py,1.4,1.4)}if(mode==='skel')return}
+else{x.drawImage(A.cv,0,0);if(mode==='plain')return;x.fillStyle='rgba(255,255,255,.35)';x.fillRect(0,0,A.w,A.h)}
+A.mn.forEach((p,i)=>{const hit=matched&&matched.has(i);x.lineWidth=hit?2.6:1.5;x.strokeStyle=hit?'#1fbf6a':(p.t===0?'#e5392b':'#2b7be5');x.beginPath();if(p.t===0||hit)x.arc(p.x,p.y,hit?6:4,0,7);else x.rect(p.x-4,p.y-4,8,8);if(hit){x.fillStyle='rgba(31,191,106,.25)';x.fill()}x.stroke();x.beginPath();x.moveTo(p.x,p.y);x.lineTo(p.x+11*Math.cos(p.a),p.y+11*Math.sin(p.a));x.stroke()});
+x.strokeStyle='#f0b400';x.lineWidth=2.5;x.fillStyle='#f0b400';A.cores.forEach(p=>{x.beginPath();x.arc(p.x,p.y,8,0,7);x.stroke()});A.deltas.forEach(p=>{x.beginPath();x.moveTo(p.x,p.y-9);x.lineTo(p.x+9,p.y+7);x.lineTo(p.x-9,p.y+7);x.closePath();x.stroke()})}
+const info=A=>`<table><tr><th>Minutiae</th><td>${A.mn.length} (${A.ends} endings, ${A.bifs} bifurcations)</td></tr><tr><th>Sample type</th><td>${A.used}</td></tr><tr><th>Usable area</th><td>${(A.cover*100).toFixed(0)}% | ${A.mn.length>=30&&A.cover>=.4?'Good':A.mn.length>=15?'Fair':'Poor'} quality</td></tr><tr><th>Reconstruction</th><td>${A.recon?'Applied':'Not applied'}</td></tr><tr><th>Pattern</th><td>${A.type}</td></tr><tr><th>Core / Delta</th><td>${A.cores.length} / ${A.deltas.length}</td></tr><tr><th>Ridge density</th><td>${(A.dens*100).toFixed(1)}% of print area</td></tr></table>`;
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- run ---------- */
+$('#go').onclick=async()=>{
+const go=$('#go');go.disabled=true;CFG=PROF[$('#prof').value];const st=$('#status');const tick=()=>new Promise(r=>setTimeout(r,20));
+try{st.textContent='Analysing questioned print...';await tick();const QA=analyzeSmart(state.q,state.types[0],$('#recon').value);
+if(QA.mn.length<6){st.textContent='Too few minutiae found in the questioned print ('+QA.mn.length+'). Use a clearer image.';go.disabled=false;return}
+const R=[];const idx=state.s.map((s,i)=>s?i:-1).filter(i=>i>=0);
+for(let k=0;k<idx.length;k++){const i=idx[k];st.textContent='Comparing '+(k+1)+'/'+idx.length+': '+state.names[i];await tick();const SA=analyzeSmart(state.s[i],state.types[i+1],$('#recon').value);const r=match(QA,SA);R.push({i,name:state.names[i]||('Specimen '+(i+1)),A:SA,r})}
+R.sort((a,b)=>b.r.score-a.r.score);
+const top=R[0],sec=R[1],T=top.r.score,gap=sec?T-sec.r.score:T;
+let cls,head,body;
+if(T>=CFG.hi&&gap>=CFG.gap){cls='ok';head='Questioned print matches: '+esc(top.name);body=`Similarity ${T.toFixed(1)}% with ${top.r.m} minutiae pairs aligned. Next best specimen is ${gap.toFixed(1)} points lower.`}
+else if(T>=CFG.lo){cls='mid';head='Inconclusive. Closest: '+esc(top.name);body=`Best similarity ${T.toFixed(1)}%`+(gap<CFG.gap&&sec?`, but ${esc(sec.name)} is within ${gap.toFixed(1)} points.`:', below the '+CFG.hi+'% match threshold.')+' Try clearer images or a larger ridge area.'}
+else{cls='no';head='No specimen matches';body=`Highest similarity was only ${T.toFixed(1)}% (${esc(top.name)}). The questioned print does not match any specimen.`}
+$('#verdict').innerHTML=`<div class="verdict ${cls}"><h3>${head}</h3><div>${body}</div></div>`;
+DR.length=0;LAST={QA,R};
+$('#casebar').textContent='Case: '+($('#caseNo').value||'not specified')+'  |  Examiner: '+($('#examiner').value||'not specified')+'  |  '+new Date().toLocaleDateString()+'  |  Profile: '+$('#prof').selectedOptions[0].text;
+$('#summary').innerHTML='<div class="sum">'+R.map(e=>`<div class="srow"><span title="${esc(e.name)}">${esc(e.name)}</span><div class="strack"><i style="width:${Math.min(100,e.r.score)}%"></i><u style="left:${CFG.lo}%"></u><u style="left:${CFG.hi}%"></u></div><b>${e.r.score.toFixed(1)}%</b></div>`).join('')+`</div><div class="sumn">Thin lines mark the inconclusive (${CFG.lo}%) and match (${CFG.hi}%) thresholds.</div>`;
+$('#stages').innerHTML='';[['plain','1. Original'],['bin','2. Binarised ridges'],['skel','3. Thinned skeleton'],['full','4. Minutiae, core, delta']].forEach(([m,l])=>{const f=document.createElement('figure'),c=document.createElement('canvas'),cp=document.createElement('figcaption');cp.textContent=l;f.append(c,cp);$('#stages').appendChild(f);draw(c,QA,null,m);DR.push([c,QA,null,m])});$('#qinfo').innerHTML=info(QA);
+const box=$('#results');box.innerHTML='';
+R.forEach((e,rk)=>{const d=document.createElement('div');d.className='res'+(rk===0&&T>=CFG.hi&&gap>=CFG.gap?' top':'');const c=document.createElement('canvas');d.appendChild(c);const sm=new Set(e.r.pairs.map(p=>p[1]));
+const v=e.r.score>=CFG.hi?'Probable match':e.r.score>=CFG.lo?'Inconclusive':'Exclusion';
+const rt=document.createElement('div');rt.innerHTML=`<div class="rk"><b>#${rk+1} ${esc(e.name)}</b><span class="pct">${e.r.score.toFixed(1)}%</span></div><div class="meter"><i style="width:${Math.min(100,e.r.score)}%"></i></div><div class="scroll"><table><tr><th>Verdict</th><td><b>${v}</b></td></tr><tr><th>Sample type</th><td>${e.A.used}${e.A.recon?' | reconstructed':''}</td></tr><tr><th>Minutiae pairs matched</th><td>${e.r.m} of ${QA.mn.length} (questioned) / ${e.A.mn.length} (specimen)</td></tr><tr><th>Minutiae agreement</th><td>${e.r.minu.toFixed(0)}%</td></tr><tr><th>Pattern</th><td>${e.A.type} (questioned: ${QA.type}) | agreement ${e.r.pat.toFixed(0)}%</td></tr><tr><th>Core / Delta</th><td>${e.A.cores.length} / ${e.A.deltas.length}</td></tr><tr><th>Ridge density agreement</th><td>${e.r.den.toFixed(0)}%</td></tr><tr><th>Endings / Bifurcations</th><td>${e.A.ends} / ${e.A.bifs}</td></tr></table></div>`;
+const bt=document.createElement('button');bt.textContent='Show matched pairs';bt.onclick=()=>{showPair(e);$('#pairBox').scrollIntoView({behavior:'smooth'})};rt.appendChild(bt);d.appendChild(rt);box.appendChild(d);draw(c,e.A,sm);DR.push([c,e.A,sm])});
+showPair(R[0]);$('#out').style.display='block';$('#out').scrollIntoView({behavior:'smooth'});st.textContent='Done.'}
+catch(err){console.error(err);st.textContent='Error: this image could not be processed. Try another image.'}
+go.disabled=false;ready_keep()};
+function ready_keep(){const s=$('#status').textContent;ready();if(s.startsWith('Done'))$('#status').textContent='Done. '+$('#status').textContent}
+function showPair(e){const QA=LAST.QA,cv=$('#pc'),W=QA.w+e.A.w+24,H=Math.max(QA.h,e.A.h);$('#pairT').textContent='Matched minutiae: questioned vs '+e.name+' ('+e.r.m+' pairs)';cv.width=W;cv.height=H;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(QA.cv,0,0);x.drawImage(e.A.cv,QA.w+24,0);x.fillStyle='rgba(255,255,255,.4)';x.fillRect(0,0,W,H);x.lineWidth=1.8;
+e.r.pairs.forEach(([i,j],k)=>{const a=QA.mn[i],b=e.A.mn[j];x.strokeStyle='hsl('+(k*47%360)+' 85% 40%)';x.beginPath();x.moveTo(a.x,a.y);x.lineTo(QA.w+24+b.x,b.y);x.stroke();[[a.x,a.y],[QA.w+24+b.x,b.y]].forEach(([px,py])=>{x.beginPath();x.arc(px,py,4.5,0,7);x.stroke()})})}
+/* ---------- demo data (synthetic prints, Sherlock-Monro orientation model + Gabor ridge growth) ---------- */
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function synth(seed,kind){const N=200,R=rng(seed*7919+13),cx=N/2+(R()-.5)*14,cy=N*.45+(R()-.5)*14,P=5.6+R()*.9,base=(R()-.5)*.7,sd=R()<.5?-1:1;
+let C=[],D=[];if(kind==='loop'){C=[[cx,cy]];D=[[cx+sd*38,cy+58]]}else if(kind==='whorl'){C=[[cx-8,cy],[cx+8,cy+5]];D=[[cx-46,cy+56],[cx+46,cy+56]]}
+const th=new Uint8Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){let a=base;if(kind==='arch')a+=1.6*((x-cx)/N)*Math.exp(-(((y-cy)/(N*.55))**2));else{for(const[px,py]of C)a+=.5*Math.atan2(y-py,x-px);for(const[px,py]of D)a-=.5*Math.atan2(y-py,x-px)}th[y*N+x]=Math.round((((a%Math.PI)+Math.PI)%Math.PI)/Math.PI*16)%16}
+const Kn=[];for(let k=0;k<16;k++){const t=k*Math.PI/16,c=Math.cos(t),s=Math.sin(t),w=[];for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){const xa=dx*c+dy*s,ya=-dx*s+dy*c;w.push(Math.exp(-(xa*xa/(2*(P*.7)**2)+ya*ya/(2*(P*.4)**2)))*Math.cos(2*Math.PI*ya/P))}Kn.push(w)}
+let v=new Float32Array(N*N);for(let i=0;i<v.length;i++)v[i]=R()*2-1;
+for(let it=0;it<7;it++){const o=new Float32Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const w=Kn[th[y*N+x]];let s=0,k=0;for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){const X=x+dx,Y=y+dy;if(X>=0&&Y>=0&&X<N&&Y<N)s+=w[k]*v[Y*N+X];k++}o[y*N+x]=Math.tanh(1.6*s)}v=o}
+const c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d'),id=x.createImageData(N,N);
+for(let y=0;y<N;y++)for(let X=0;X<N;X++){const d=((X-N/2)/(N*.4))**2+((y-N/2)/(N*.47))**2,al=d<.8?1:Math.max(0,1-(d-.8)/.2),g=Math.max(0,Math.min(255,128+v[y*N+X]*115)),p=255*(1-al)+g*al,i=(y*N+X)*4;id.data[i]=id.data[i+1]=id.data[i+2]=p;id.data[i+3]=255}
+x.putImageData(id,0,0);return c}
+function makeLatent(src){const N=src.width,c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,N,N);x.save();x.translate(N/2+6,N/2-4);x.rotate(.5);x.translate(-N/2,-N/2);if('filter'in x)x.filter='blur(.6px)';x.drawImage(src,0,0);x.restore();
+const id=x.getImageData(0,0,N,N),d=id.data,R=rng(99);for(let y=0;y<N;y++)for(let X=0;X<N;X++){const i=(y*N+X)*4,dd=Math.hypot(X-108,y-100),k=dd<62?1:dd<70?(70-dd)/8:0,v=Math.max(0,Math.min(255,255-(255-d[i])*.5*k+(R()-.5)*26*k));d[i]=d[i+1]=d[i+2]=v}
+x.putImageData(id,0,0);return c}
+async function loadDemo(){const st=$('#status'),kinds=['loop','whorl','loop','arch','loop','whorl','loop','loop'],tick=()=>new Promise(r=>setTimeout(r,15)),cs=[];$('#demo').disabled=true;
+for(let i=0;i<8;i++){st.textContent='Generating demo sample '+(i+1)+'/8...';await tick();cs.push(synth(i+3,kinds[i]))}
+state.s=cs;state.names=cs.map((_,i)=>'Suspect '+String.fromCharCode(65+i));state.q=makeLatent(cs[4]);state.types=['latent',...cs.map(()=>'patent')];if(!$('#caseNo').value)$('#caseNo').value='DEMO-001';renderQ();renderSlots();$('#demo').disabled=false;$('#go').click()}
+$('#demo').onclick=loadDemo;
+$('#view').onchange=()=>DR.forEach(a=>draw(...a));
+renderQ();renderSlots();
+</script></body></html>
